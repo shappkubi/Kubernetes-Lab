@@ -1,0 +1,11 @@
+# Day 1 reflection — Lab 1 Architecture Tour
+1. The API server is...It's the front door of the cluster: every read and every write goes through it. It does authentication → authorization → admission, then persists to etcd
+2. etcd is...it's a distributed key-value store  and  It stores every cluster object — Deployments, Pods, Secrets, RBAC.
+3. The scheduler...The scheduler assigns pods to nodes and stops there. 
+4. The kubelet...kubelet has nothing to do with DaemonSets specifically. The kubelet is the agent on every node. It watches the API server for pods assigned to its node, then talks to the container runtime (containerd) to actually pull images and start containers. It also reports back the status (Ready, Running, etc.)
+5. kube-proxy... it runs on every node and programs iptables (or IPVS) rules so that traffic destined for a Service's ClusterIP gets DNAT'd to one of the backing pod IPs. It's the data plane for Services.
+-
+
+The whole K8s architecture can be divided into two main parts, the Control Node and the Worker nodes. In the Control Node has the API Server which the user access to communicate through it CLI tool called the KUBECTL allowing to run all the necessary commands. Again in the Control node is the Scheduler which is responsible for distributing pod to the worker nodes base on resource availability, there is also Controler Manager with the task of overseeing everything in the system, alerting and bringing up new pod if any goes down in Worker nodes for the scheduler to drop with Replicasets. The ETCD is a key-value store for the entire system and also for backup. Now on the worker node side there is KUBELET; which is an agent that gets everything running at the pod level and their execution. the KUBE-PROXY Service datapath: when a pod sends a packet to a Service ClusterIP (a virtual IP), kube-proxy's iptables/IPVS rules rewrite that destination to a real pod IP
+
+**What I noticed today:** the second pod's image pull was 4.4s vs 173ms for the first — node-local image cache makes a huge difference.
