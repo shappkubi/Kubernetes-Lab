@@ -1,0 +1,55 @@
+# All Service flavors in one file. Apply individually as needed.
+---
+# 1) ClusterIP — internal only.
+apiVersion: v1
+kind: Service
+metadata: { name: web }
+spec:
+  type: ClusterIP
+  selector: { app: web }
+  ports:
+    - { name: http, port: 80, targetPort: 8080, protocol: TCP }
+---
+# 2) NodePort — opens a port on every node (range 30000–32767).
+apiVersion: v1
+kind: Service
+metadata: { name: web-nodeport }
+spec:
+  type: NodePort
+  selector: { app: web }
+  ports:
+    - { name: http, port: 80, targetPort: 8080, nodePort: 30080 }
+---
+# 3) LoadBalancer — cloud LB or MetalLB in lab.
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-lb
+  annotations:
+    # AWS example
+    service.beta.kubernetes.io/aws-load-balancer-type: nlb
+    service.beta.kubernetes.io/aws-load-balancer-scheme: internal
+spec:
+  type: LoadBalancer
+  externalTrafficPolicy: Local       # preserve client IP, only routes to local pods
+  selector: { app: web }
+  ports:
+    - { name: http, port: 80, targetPort: 8080 }
+---
+# 4) Headless — clusterIP: None. DNS returns pod IPs. Used by StatefulSets.
+apiVersion: v1
+kind: Service
+metadata: { name: web-headless }
+spec:
+  clusterIP: None
+  selector: { app: web }
+  ports:
+    - { name: http, port: 80, targetPort: 8080 }
+---
+# 5) ExternalName — DNS CNAME alias. No selector, no proxying.
+apiVersion: v1
+kind: Service
+metadata: { name: external-db }
+spec:
+  type: ExternalName
+  externalName: db.example.com

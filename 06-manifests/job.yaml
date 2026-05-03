@@ -1,0 +1,47 @@
+# Job and CronJob with sane production defaults.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: migrate-db
+spec:
+  backoffLimit: 4               # retries on failure
+  completions: 1
+  parallelism: 1
+  ttlSecondsAfterFinished: 3600 # auto-delete the Job + Pods 1h after finish
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: ghcr.io/acme/migrate:1.0
+          env:
+            - name: DB_URL
+              valueFrom: { secretKeyRef: { name: db-creds, key: url } }
+          resources:
+            requests: { cpu: 200m, memory: 256Mi }
+            limits:   { memory: 512Mi }
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: nightly-report
+spec:
+  schedule: "0 2 * * *"                  # 02:00 server time daily
+  timeZone: "Africa/Nairobi"             # avoid UTC confusion
+  concurrencyPolicy: Forbid              # don't double-run if previous still going
+  startingDeadlineSeconds: 600           # if missed, give up after 10 min
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      ttlSecondsAfterFinished: 86400
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: report
+              image: ghcr.io/acme/report:1.0
+              resources:
+                requests: { cpu: 100m, memory: 128Mi }
+                limits:   { memory: 256Mi }

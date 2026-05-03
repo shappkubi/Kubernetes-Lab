@@ -1,0 +1,83 @@
+# NetworkPolicy patterns: default-deny, explicit allow, cross-namespace allow, egress.
+# Reminder: enforcement requires a NetworkPolicy-aware CNI (Calico, Cilium, Antrea, kube-router).
+---
+# 1) Default-deny ALL ingress in this namespace.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: app
+spec:
+  podSelector: {}                     # all pods in `app`
+  policyTypes: [Ingress]
+---
+# 2) Default-deny ALL egress in this namespace EXCEPT DNS to kube-system.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-egress-allow-dns
+  namespace: app
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: kube-system } }
+          podSelector: { matchLabels: { k8s-app: kube-dns } }
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+---
+# 3) Allow web -> api on port 8080 (intra-namespace).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: web-to-api
+  namespace: app
+spec:
+  podSelector:
+    matchLabels: { app: api }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: { app: web }
+      ports:
+        - { protocol: TCP, port: 8080 }
+---
+# 4) Allow ingress from a DIFFERENT namespace (label the namespace as a tenant boundary).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-tenant-x
+  namespace: shared-services
+spec:
+  podSelector:
+    matchLabels: { app: tickets }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: { tenant: x }
+          podSelector:
+            matchLabels: { role: frontend }
+      ports:
+        - { protocol: TCP, port: 80 }
+---
+# 5) Allow egress from `app` namespace to a specific external CIDR (e.g. corporate API gateway).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: egress-to-corp-api
+  namespace: app
+spec:
+  podSelector:
+    matchLabels: { needs-corp-api: "true" }
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 10.20.0.0/16
+            except: [10.20.0.0/24]    # carve out an internal range
+      ports:
+        - { protocol: TCP, port: 443 }

@@ -1,0 +1,79 @@
+# RBAC patterns: namespaced Role for a CI bot, ClusterRole for cross-namespace reads,
+# aggregated ClusterRole, plus a ServiceAccount and bindings.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: ci-bot, namespace: prod }
+---
+# Role: namespaced rules — apply only inside `prod`.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: { name: ci-deployer, namespace: prod }
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments", "deployments/scale"]
+    verbs: ["get","list","watch","create","update","patch"]
+  - apiGroups: [""]
+    resources: ["configmaps","secrets","services"]
+    verbs: ["get","list","watch","create","update","patch"]
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "events"]
+    verbs: ["get","list","watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: { name: ci-deployer, namespace: prod }
+subjects:
+  - kind: ServiceAccount
+    name: ci-bot
+    namespace: prod
+roleRef:
+  kind: Role
+  name: ci-deployer
+  apiGroup: rbac.authorization.k8s.io
+---
+# ClusterRole: cluster-wide rules — used here for read-only cluster monitoring.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata: { name: viewer-extra }
+rules:
+  - apiGroups: [""]
+    resources: ["nodes","nodes/proxy"]
+    verbs: ["get","list","watch"]
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["pods","nodes"]
+    verbs: ["get","list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata: { name: viewer-extra }
+subjects:
+  - kind: Group
+    name: ops-readonly
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: viewer-extra
+  apiGroup: rbac.authorization.k8s.io
+---
+# Aggregated ClusterRole — anything labelled with the aggregator label gets merged in.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: monitoring
+  aggregationRule:
+    clusterRoleSelectors:
+      - matchLabels: { rbac.example.com/aggregate-to-monitoring: "true" }
+rules: []     # filled in by aggregation
+---
+# A "donor" ClusterRole that gets aggregated.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: monitoring-podreader
+  labels:
+    rbac.example.com/aggregate-to-monitoring: "true"
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get","list","watch"]

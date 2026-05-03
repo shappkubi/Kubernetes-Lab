@@ -1,0 +1,46 @@
+# PVC patterns: simple RWO, RWX with shared storage class, retained PV from manual binding.
+---
+# Most common — dynamic block storage from the default StorageClass.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: { name: data }
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests: { storage: 10Gi }
+---
+# Shared filesystem (NFS-like). Storage class must support RWX.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: { name: shared }
+spec:
+  accessModes: [ReadWriteMany]
+  storageClassName: efs-sc                # cloud-specific, e.g. AWS EFS
+  resources:
+    requests: { storage: 50Gi }
+---
+# Static binding — you (or an operator) created the PV manually.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: legacy-pv
+  labels: { source: legacy }
+spec:
+  capacity: { storage: 100Gi }
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain   # do not auto-delete on PVC delete
+  storageClassName: ""                    # explicitly empty for manual binding
+  nfs:
+    server: nfs.internal
+    path: /exports/legacy
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: { name: legacy }
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: ""
+  resources:
+    requests: { storage: 100Gi }
+  selector:
+    matchLabels: { source: legacy }

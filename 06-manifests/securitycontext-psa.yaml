@@ -1,0 +1,40 @@
+# A pod that PASSES Pod Security Admission level `restricted`.
+# Apply the namespace label first:
+#   kubectl create ns secure
+#   kubectl label ns secure pod-security.kubernetes.io/enforce=restricted
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hardened
+  namespace: secure
+spec:
+  # Pod-level
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    runAsGroup: 65532
+    fsGroup: 65532
+    seccompProfile: { type: RuntimeDefault }
+  containers:
+    - name: c
+      # Use an unprivileged image — nginx-unprivileged listens on 8080, not 80.
+      image: nginxinc/nginx-unprivileged:1.27
+      ports: [{ containerPort: 8080 }]
+      # Container-level — required to clear the `restricted` bar.
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+        runAsUser: 65532
+        capabilities: { drop: ["ALL"] }
+        seccompProfile: { type: RuntimeDefault }
+      # readOnlyRootFilesystem: app needs writable scratch dirs.
+      volumeMounts:
+        - { name: tmp, mountPath: /tmp }
+        - { name: cache, mountPath: /var/cache/nginx }
+        - { name: run, mountPath: /var/run }
+  volumes:
+    - { name: tmp, emptyDir: {} }
+    - { name: cache, emptyDir: {} }
+    - { name: run, emptyDir: {} }

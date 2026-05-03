@@ -1,0 +1,77 @@
+# Pod with init container, sidecar, securityContext, resources, probes.
+# Useful as a "remember everything in one place" reference.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: app
+  labels:
+    app: app
+spec:
+  # Pod-level security context — applies as defaults to every container.
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    runAsGroup: 65532
+    fsGroup: 65532
+    seccompProfile:
+      type: RuntimeDefault
+  serviceAccountName: app
+  # Init containers run sequentially, must each succeed before the main containers start.
+  initContainers:
+    - name: wait-for-db
+      image: busybox:1.36
+      command: ["sh", "-c", "until nslookup db; do sleep 2; done"]
+  containers:
+    - name: app
+      image: ghcr.io/acme/app:1.2.3
+      ports:
+        - containerPort: 8080
+          name: http
+      env:
+        - name: LOG_LEVEL
+          value: info
+        - name: DB_HOST
+          value: db
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef: { name: db-creds, key: password }
+      envFrom:
+        - configMapRef: { name: app-config }
+      resources:
+        requests: { cpu: 100m, memory: 128Mi }
+        limits:   { memory: 256Mi }       # No CPU limit — see WEEK4.md Lab 19.
+      # Sane probe defaults: startup gives slow apps room, liveness kicks if the process hangs,
+      # readiness gates traffic on dependency health. Different endpoints on purpose.
+      startupProbe:
+        httpGet: { path: /healthz, port: http }
+        failureThreshold: 30
+        periodSeconds: 5
+      livenessProbe:
+        httpGet: { path: /healthz, port: http }
+        periodSeconds: 10
+        failureThreshold: 3
+      readinessProbe:
+        httpGet: { path: /ready, port: http }
+        periodSeconds: 5
+        failureThreshold: 3
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: ["ALL"]
+      volumeMounts:
+        - { name: tmp, mountPath: /tmp }
+        - { name: cfg, mountPath: /etc/app, readOnly: true }
+    # Sidecar: log shipper that tails app's emptyDir log dir.
+    - name: log-shipper
+      image: fluent/fluent-bit:3.1
+      args: ["-i", "tail", "-p", "path=/var/log/app/*.log"]
+      resources:
+        requests: { cpu: 20m, memory: 32Mi }
+      volumeMounts:
+        - { name: applog, mountPath: /var/log/app }
+  volumes:
+    - { name: tmp, emptyDir: {} }
+    - { name: applog, emptyDir: {} }
+    - { name: cfg, configMap: { name: app-config } }
+  terminationGracePeriodSeconds: 30

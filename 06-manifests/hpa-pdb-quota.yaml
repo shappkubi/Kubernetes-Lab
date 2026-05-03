@@ -1,0 +1,75 @@
+# HPA, PDB, ResourceQuota, LimitRange — the four guardrails of a production namespace.
+---
+# Horizontal Pod Autoscaler with explicit behavior — fast scale-up, conservative scale-down.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: web
+  namespace: app
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: web
+  minReplicas: 3
+  maxReplicas: 30
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 60 }
+    - type: Resource
+      resource:
+        name: memory
+        target: { type: Utilization, averageUtilization: 80 }
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - { type: Percent, value: 100, periodSeconds: 15 }   # double every 15s
+        - { type: Pods,    value: 4,   periodSeconds: 15 }   # or +4 pods
+      selectPolicy: Max
+    scaleDown:
+      stabilizationWindowSeconds: 300                        # don't scale in for 5 min
+      policies:
+        - { type: Percent, value: 25, periodSeconds: 60 }
+---
+# PodDisruptionBudget — voluntary disruptions only.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: { name: web, namespace: app }
+spec:
+  minAvailable: 2                       # for replicas: 3, only one can drain at a time
+  selector:
+    matchLabels: { app: web }
+---
+# ResourceQuota — namespace-level cap on cumulative requests/limits/objects.
+apiVersion: v1
+kind: ResourceQuota
+metadata: { name: app-quota, namespace: app }
+spec:
+  hard:
+    requests.cpu: "8"
+    requests.memory: 16Gi
+    limits.cpu: "16"
+    limits.memory: 32Gi
+    requests.storage: 200Gi
+    persistentvolumeclaims: "20"
+    pods: "100"
+    services.loadbalancers: "2"
+    count/secrets: "50"
+---
+# LimitRange — auto-fill defaults and reject pods outside min/max.
+apiVersion: v1
+kind: LimitRange
+metadata: { name: app-defaults, namespace: app }
+spec:
+  limits:
+    - type: Container
+      default:        { cpu: 200m, memory: 256Mi }
+      defaultRequest: { cpu: 100m, memory: 128Mi }
+      max:            { cpu: 2,    memory: 2Gi }
+      min:            { cpu: 50m,  memory: 64Mi }
+    - type: PersistentVolumeClaim
+      max: { storage: 50Gi }
+      min: { storage: 1Gi }

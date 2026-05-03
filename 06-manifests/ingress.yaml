@@ -1,0 +1,34 @@
+# Ingress with TLS, host + path routing, common annotations.
+# Assumes ingress-nginx is the controller (the most common in 2025).
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web
+  annotations:
+    # Modern annotations (ingress-nginx)
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    cert-manager.io/cluster-issuer: letsencrypt-prod    # if cert-manager is installed
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [www.example.com]
+      secretName: www-example-com-tls
+  rules:
+    - host: www.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port: { name: http }
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port: { number: 80 }

@@ -1,0 +1,33 @@
+# k3d cluster config — minimal for a low-disk laptop.
+# 1 server (control plane + scheduler + apiserver + etcd-equivalent) + 1 agent (worker).
+# Total RAM ~1 GB, disk ~1 GB. Enough for ~95% of labs.
+# Bump agents to 2 if you hit a lab that needs a real second worker — bump back down after.
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: lab
+servers: 1
+agents: 1
+image: rancher/k3s:v1.30.2-k3s1
+ports:
+  # Map host 80/443 to the loadbalancer so Ingress works at http(s)://localhost
+  - port: 80:80
+    nodeFilters:
+      - loadbalancer
+  - port: 443:443
+    nodeFilters:
+      - loadbalancer
+options:
+  k3s:
+    extraArgs:
+      # Disable bundled Traefik so we can install nginx-ingress (matches what most companies run)
+      - arg: --disable=traefik
+        nodeFilters:
+          - server:*
+      # Disable bundled servicelb (klipper) so we can install MetalLB if a lab needs LB Services
+      - arg: --disable=servicelb
+        nodeFilters:
+          - server:*
+  kubeconfig:
+    updateDefaultKubeconfig: true
+    switchCurrentContext: true

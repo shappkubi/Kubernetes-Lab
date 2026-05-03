@@ -1,0 +1,27 @@
+# Heavier kind cluster — 1 control plane + 3 workers, with port mappings for ingress.
+# Use ONLY for labs that explicitly say "kind required" (topology spread, multi-zone scheduling,
+# DaemonSet visibility on >1 worker). Tears down the second you're done.
+apiVersion: kind.x-k8s.io/v1alpha4
+kind: Cluster
+name: lab-kind
+nodes:
+  - role: control-plane
+    image: kindest/node:v1.30.0
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"
+    extraPortMappings:
+      - { containerPort: 80,  hostPort: 80,  protocol: TCP }
+      - { containerPort: 443, hostPort: 443, protocol: TCP }
+  - role: worker
+    image: kindest/node:v1.30.0
+    labels: { zone: a, tier: app }
+  - role: worker
+    image: kindest/node:v1.30.0
+    labels: { zone: b, tier: app }
+  - role: worker
+    image: kindest/node:v1.30.0
+    labels: { zone: b, tier: data }
