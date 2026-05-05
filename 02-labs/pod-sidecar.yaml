@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: app-with-sidecar
+spec:
+  volumes:
+    - name: shared
+      emptyDir: {}
+  containers:
+    - name: writer
+      image: busybox
+      command: ["sh", "-c", "while true; do date >> /var/log/app.log; sleep 2; done"]
+      volumeMounts:
+        - name: shared
+          mountPath: /var/log
+    - name: log-shipper
+      image: busybox
+      command: ["sh", "-c", "tail -F /var/log/app.log"]
+      volumeMounts:
+        - name: shared
+          mountPath: /var/log

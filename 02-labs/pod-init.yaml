@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: web-with-init
+spec:
+  initContainers:
+    - name: wait-for-config
+      image: busybox
+      command: ["sh", "-c", "echo seeding...; sleep 10; echo done"]
+  containers:
+    - name: web
+      image: nginx
+      ports:
+        - containerPort: 80

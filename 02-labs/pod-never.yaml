@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: never-restart
+spec:
+  restartPolicy: OnFailure
+  containers:
+    - name: bye
+      image: busybox
+      command: ["sh", "-c", "echo hi; sleep 5; exit 1"]
