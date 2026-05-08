@@ -1,0 +1,14 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata: { name: node-tag, namespace: kube-system }
+spec:
+  selector: { matchLabels: { app: node-tag } }
+  template:
+    metadata: { labels: { app: node-tag } }
+    spec:
+      tolerations: [{ operator: Exists }]
+      containers:
+        - name: tag
+          image: busybox
+          command: ["sh","-c","echo $(date) on $NODE; sleep 3600"]
+          env: [{ name: NODE, valueFrom: { fieldRef: { fieldPath: spec.nodeName } } }]
