@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: web-to-api, namespace: shop }
+spec:
+  podSelector: { matchLabels: { app: api } }
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { role: frontend } }
+      ports: [{ port: 80, protocol: TCP }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: api-to-db, namespace: shop }
+spec:
+  podSelector: { matchLabels: { app: db } }
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { role: backend } }
+      ports: [{ port: 80, protocol: TCP }]

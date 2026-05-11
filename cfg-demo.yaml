@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Pod
+metadata: { name: cfg-demo }
+spec:
+  containers:
+    - name: c
+      image: busybox
+      command: ["sh","-c","env | grep -E 'GREETING|LOG'; ls /etc/cfg; cat /etc/cfg/GREETING; sleep 3600"]
+      env:
+        - name: GREETING                       # 1. single env var from key
+          valueFrom: { configMapKeyRef: { name: app-config, key: GREETING } }
+      envFrom:
+        - configMapRef: { name: app-config }   # 2. all keys as env vars
+      volumeMounts:
+        - name: cfg-vol                        # 3. as files
+          mountPath: /etc/cfg
+  volumes:
+    - name: cfg-vol
+      configMap: { name: app-config }

@@ -1,0 +1,7 @@
+Week 2 focused on Kubernetes configuration management, persistent storage, networking internals, DNS, and network security policies. 
+In Lab 7, you learned how ConfigMaps and Secrets inject configuration into Pods through environment variables and mounted files, and you observed that mounted ConfigMap files update dynamically while environment variables remain static until Pod restart. 
+In Lab 8, you worked with PersistentVolumeClaims, PersistentVolumes, StorageClasses, and dynamic provisioning, proving that data persists beyond Pod deletion. 
+In Lab 9, you deployed PostgreSQL using a StatefulSet with volumeClaimTemplates, demonstrating stable Pod identity, dedicated per-replica storage, ordered startup, and persistent database data after Pod recreation. 
+In Lab 10, you validated the Kubernetes networking model by confirming direct Pod-to-Pod communication across nodes using unique Pod IPs managed by the CNI. 
+In Lab 11, you explored Kubernetes DNS and CoreDNS, tested service and StatefulSet DNS resolution, reviewed CoreDNS configuration, and observed cluster DNS failure when CoreDNS was scaled down. 
+Finally, in Lab 12, you implemented NetworkPolicies using a default-deny model with explicit allow rules, proving label-based traffic segmentation between frontend, API, and database workloads. Overall, Week 2 built practical understanding of how Kubernetes manages configuration, persistence, networking, service discovery, and security controls in real production-style environments.
