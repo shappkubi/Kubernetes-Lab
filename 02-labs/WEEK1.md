@@ -470,6 +470,7 @@ spec:
 $ kubectl get pod -l app=web-sts -w
 ```
 
+
 Pods come up **one at a time, in order: web-0, web-1, web-2**. Each has a stable name and DNS (`web-0.web-headless.default.svc.cluster.local`). Delete one — it comes back with the **same name and same identity**, unlike a Deployment pod which gets a new random suffix.
 
 ### 6.5 Reflect — when do you reach for each?
