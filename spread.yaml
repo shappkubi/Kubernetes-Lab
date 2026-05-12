@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spread
+spec:
+  replicas: 6
+  selector:
+    matchLabels:
+      app: spread
+  template:
+    metadata:
+      labels:
+        app: spread
+    spec:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: spread
+      containers:
+        - name: c
+          image: nginx

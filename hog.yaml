@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hog
+spec:
+  containers:
+    - name: c
+      image: polinux/stress
+      resources:
+        requests:
+          memory: 64Mi
+          cpu: 100m
+        limits:
+          memory: 64Mi
+          cpu: 100m
+      command: ["stress"]
+      args: ["--vm","1","--vm-bytes","100M","--vm-hang","1"]

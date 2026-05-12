@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: batch-no-toleration
+spec:
+  nodeSelector:
+    kubernetes.io/hostname: k3d-lab-agent-0
+  containers:
+    - name: c
+      image: nginx
